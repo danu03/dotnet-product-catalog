@@ -1,0 +1,31 @@
+## Build and compilation outputs
+[Bb]in/
+[Oo]bj/
+apphost
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+
+## Local database and runtime logs
+*.db
+*.db-shm
+*.db-wal
+logs/
+*.log
+
+## IDE and Editor configurations
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## OS & Local environment caches
+.DS_Store
+Thumbs.db
+Library/
+.local/
+**/.local/
+**/.aspnet/
