@@ -1,0 +1,136 @@
+@page
+@model ProductCatalog.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "Catalog Dashboard";
+}
+
+<div class="catalog-page">
+    <!-- Catalog Management Section -->
+    <section id="catalog-section" class="panel catalog-panel">
+        <div class="catalog-header">
+            <div>
+                <h2 class="panel-title">Products Inventory</h2>
+                <p class="panel-subtitle">Manage catalog items, search by title, and filter by price range.</p>
+            </div>
+            <button type="button" id="btn-open-create" class="btn btn-primary">+ Add Product</button>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <form id="filter-form" class="filter-bar">
+            <div class="filter-group">
+                <label for="filter-name">Search Name</label>
+                <input type="text" id="filter-name" class="form-input" placeholder="Search by product name..." />
+            </div>
+            <div class="filter-group">
+                <label for="filter-min-price">Min Price (Rp)</label>
+                <input type="number" id="filter-min-price" class="form-input" step="1000" min="0" placeholder="0" />
+            </div>
+            <div class="filter-group">
+                <label for="filter-max-price">Max Price (Rp)</label>
+                <input type="number" id="filter-max-price" class="form-input" step="1000" min="0" placeholder="10000000" />
+            </div>
+            <div class="filter-actions">
+                <button type="submit" id="btn-apply-filter" class="btn btn-secondary">Apply Filter</button>
+                <button type="button" id="btn-reset-filter" class="btn btn-tertiary">Reset</button>
+            </div>
+        </form>
+
+        <div id="filter-validation-alert" class="alert alert-danger" role="alert" style="display: none;"></div>
+
+        <!-- UI State Containers -->
+        <div id="catalog-loading" class="state-container" style="display: none;">
+            <div class="state-indicator" aria-hidden="true"></div>
+            <p class="state-text">Loading catalog products from API...</p>
+        </div>
+
+        <div id="catalog-error" class="state-container alert alert-danger" style="display: none;">
+            <p id="catalog-error-message" class="state-text"></p>
+            <button type="button" id="btn-retry-fetch" class="btn btn-secondary">Try Again</button>
+        </div>
+
+        <div id="catalog-empty" class="state-container empty-state" style="display: none;">
+            <h3 class="empty-title">No Products Found</h3>
+            <p id="empty-state-text" class="empty-description">The catalog currently has no products matching your filter criteria.</p>
+            <div class="empty-actions">
+                <button type="button" id="btn-empty-clear-filter" class="btn btn-secondary" style="display: none;">Clear Filter</button>
+                <button type="button" id="btn-empty-add" class="btn btn-primary">+ Add First Product</button>
+            </div>
+        </div>
+
+        <!-- Products Table / Cards -->
+        <div id="table-wrapper" class="table-responsive" style="display: none;">
+            <table class="data-table" aria-label="Product Catalog Table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="col-id">ID</th>
+                        <th scope="col" class="col-name">Name</th>
+                        <th scope="col" class="col-desc">Description</th>
+                        <th scope="col" class="col-price">Price</th>
+                        <th scope="col" class="col-date">Created At</th>
+                        <th scope="col" class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="products-table-body">
+                    <!-- Populated dynamically via JS textContent -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- Add / Edit Modal Dialog -->
+<dialog id="product-dialog" class="app-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-content">
+        <div class="dialog-header">
+            <h3 id="dialog-title" class="dialog-title">Add New Product</h3>
+            <button type="button" id="btn-dialog-close-x" class="dialog-close-btn" aria-label="Close dialog">&times;</button>
+        </div>
+        <form id="product-form" novalidate>
+            <input type="hidden" id="product-id" name="id" value="" />
+            
+            <div id="product-form-error" class="alert alert-danger" style="display: none;"></div>
+
+            <div class="form-group">
+                <label for="product-name">Product Name *</label>
+                <input type="text" id="product-name" name="name" class="form-input" required maxlength="120" placeholder="e.g. Ergonomic Office Chair" />
+                <span class="field-error" id="product-name-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="product-description">Description *</label>
+                <textarea id="product-description" name="description" class="form-textarea" rows="3" required maxlength="1000" placeholder="Product details, specs, and features..."></textarea>
+                <span class="field-error" id="product-description-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="product-price">Price (Rp) *</label>
+                <input type="number" id="product-price" name="price" class="form-input" step="1" min="1" max="999999999999" required placeholder="Contoh: 1500000" />
+                <span class="field-error" id="product-price-error"></span>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" id="btn-dialog-cancel" class="btn btn-secondary">Cancel</button>
+                <button type="submit" id="btn-dialog-save" class="btn btn-primary">Save Product</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<!-- Delete Confirmation Dialog -->
+<dialog id="delete-dialog" class="app-dialog" aria-labelledby="delete-dialog-title">
+    <div class="dialog-content">
+        <div class="dialog-header">
+            <h3 id="delete-dialog-title" class="dialog-title">Confirm Deletion</h3>
+            <button type="button" id="btn-delete-close-x" class="dialog-close-btn" aria-label="Close confirmation dialog">&times;</button>
+        </div>
+        <div class="dialog-body">
+            <p>Are you sure you want to delete product <strong id="delete-product-name"></strong>?</p>
+            <p class="dialog-warning">This action cannot be undone.</p>
+            <div id="delete-dialog-error" class="alert alert-danger" style="display: none;"></div>
+        </div>
+        <div class="dialog-actions">
+            <button type="button" id="btn-delete-cancel" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="btn-delete-confirm" class="btn btn-danger">Delete</button>
+        </div>
+    </div>
+</dialog>
